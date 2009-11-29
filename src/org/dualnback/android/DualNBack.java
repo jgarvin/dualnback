@@ -13,8 +13,24 @@ import android.view.ViewGroup.LayoutParams;
 import org.dualnback.android.Grid;
 import android.widget.Button;
 
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
+
+class Stimulus
+{
+	private int box_x_;
+	private int box_y_;
+	private int sound_index_;
+
+	Stimulus(int box_x, int box_y, int sound_index)
+	{
+		box_x_ = box_x;
+		box_y_ = box_y;
+		sound_index_ = sound_index;
+	}
+
+	void display_visual(Grid x) { x.lightSquare(box_x_, box_y_); }
+	void play_sound() {}
+}
 
 class NextStimulus extends TimerTask
 {
@@ -22,19 +38,23 @@ class NextStimulus extends TimerTask
 	private View to_update;
 
 	private int x;
+	private Iterator<Stimulus> current_stimuli_;
 	
-	public NextStimulus(Grid to_light, View to_update) {
+	public NextStimulus(Grid to_light, Iterator<Stimulus> stimuli) {
 		super();
 		
 		grid = to_light;
-		x = 0;
+		current_stimuli_ = stimuli;
 	}
 	
 	public void run() {
-		x = (x + 1) % 3;
-		
-		grid.lightSquare(x, 0);
-		grid.postInvalidate();
+		if(!current_stimuli_.hasNext()) {
+			cancel();
+		}
+		else {
+			current_stimuli_.next().display_visual(grid);
+			grid.postInvalidate();
+		}
 	}
 }
 
@@ -66,9 +86,9 @@ public class DualNBack extends Activity
 		buttonLayout.setOrientation(LinearLayout.HORIZONTAL);
 
 		Button audioButton = new Button(this);
-		audioButton.setText("Audio");
+		audioButton.setText("Aural");
 		Button videoButton = new Button(this);
-		videoButton.setText("Video");
+		videoButton.setText("Visual");
 
 		buttonLayout.addView(audioButton, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
 		buttonLayout.addView(videoButton, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
@@ -76,7 +96,12 @@ public class DualNBack extends Activity
 		topLayout.addView(buttonLayout, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.9f));
 		setContentView(topLayout);
 
+		ArrayList<Stimulus> test = new ArrayList<Stimulus>();
+		test.add(new Stimulus(0, 0, 0));
+		test.add(new Stimulus(1, 0, 0));
+		test.add(new Stimulus(2, 0, 0));
+
 		stimulus_timer_ = new Timer();
-		stimulus_timer_.scheduleAtFixedRate(new NextStimulus(grid, topLayout), 0, 1000);
+		stimulus_timer_.scheduleAtFixedRate(new NextStimulus(grid, test.iterator()), 0, 1000);
     }
 }
