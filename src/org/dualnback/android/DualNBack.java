@@ -15,20 +15,62 @@ import android.widget.Button;
 
 import java.util.*;
 
+import android.app.AlertDialog;
+
+class Pair<T, S> {
+  public Pair(T f, S s){ 
+    first = f;
+    second = s;   
+  }
+ 
+  public String toString()  { 
+    return "(" + first.toString() + ", " + second.toString() + ")"; 
+  }
+ 
+  public T first;
+  public S second;
+}
+
 class Stimulus
 {
-	private int box_x_;
-	private int box_y_;
+	private int box_loc_;
 	private int sound_index_;
 
-	Stimulus(int box_x, int box_y, int sound_index)
+	public Stimulus(int box_loc, int sound_index)
 	{
-		box_x_ = box_x;
-		box_y_ = box_y;
+		box_loc_ = box_loc;
 		sound_index_ = sound_index;
 	}
 
-	void display_visual(Grid x) { x.lightSquare(box_x_, box_y_); }
+	public boolean visual_match(Stimulus other) {
+		return box_loc_ == other.box_loc_;
+	}
+
+	public boolean aural_match(Stimulus other) {
+		return sound_index_ == other.sound_index_;
+	}
+
+	void display_visual(Grid x) {
+		Pair<Integer, Integer> d = new Pair(0, 1);
+		Pair<Integer, Integer> r = new Pair(1, 0);
+		Pair<Integer, Integer> u = new Pair(0, -1);
+		Pair<Integer, Integer> l = new Pair(-1, 0);
+
+		ArrayList< Pair<Integer, Integer> > spiral = new ArrayList< Pair<Integer, Integer> >();
+		spiral.add(d); spiral.add(d);
+		spiral.add(r); spiral.add(r);
+		spiral.add(u); spiral.add(u);
+		spiral.add(l); spiral.add(l);
+
+		Pair<Integer, Integer> loc = new Pair(0, 0);
+		for(int i = 0; i < box_loc_; ++i) {
+			loc.first += spiral.get(i).first;
+			loc.second += spiral.get(i).second;
+		}
+		
+		x.lightSquare(loc.first, loc.second);
+	}
+	
 	void play_sound() {}
 }
 
@@ -52,8 +94,10 @@ class NextStimulus extends TimerTask
 			cancel();
 		}
 		else {
-			current_stimuli_.next().display_visual(grid);
+			Stimulus current = current_stimuli_.next();
+			current.display_visual(grid);
 			grid.postInvalidate();
+			current.play_sound();
 		}
 	}
 }
@@ -96,12 +140,119 @@ public class DualNBack extends Activity
 		topLayout.addView(buttonLayout, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.9f));
 		setContentView(topLayout);
 
-		ArrayList<Stimulus> test = new ArrayList<Stimulus>();
-		test.add(new Stimulus(0, 0, 0));
-		test.add(new Stimulus(1, 0, 0));
-		test.add(new Stimulus(2, 0, 0));
+		sanityTest();
 
+		playLevel(2, grid);
+    }
+
+	private boolean verifyStimulusChain(int n, ArrayList<Stimulus> chain)
+	{
+		Log.v(TAG, "Verifying chain...");
+		
+		int visual_matches = 0;
+		for(int i = 0; i < chain.size() - n; ++i) {
+			if(chain.get(i).visual_match(chain.get(i + n)) &&
+			   !chain.get(i).aural_match(chain.get(i + n))) {
+				Log.v(TAG, "Visual match");
+				++visual_matches;
+			}
+		}
+
+		if(visual_matches != 4) {
+			Log.v(TAG, "Wrong number of visual matches");
+			return false;
+		}
+
+		int aural_matches = 0;
+		for(int i = 0; i < chain.size() - n; ++i) {
+			if(chain.get(i).aural_match(chain.get(i + n)) &&
+			   !chain.get(i).visual_match(chain.get(i + n))) {
+				Log.v(TAG, "Aural match");
+				++aural_matches;
+			}
+		}
+
+		if(aural_matches != 4) {
+			Log.v(TAG, "Wrong number of audio matches");
+			return false;
+		}
+
+		int dual_matches = 0;
+		for(int i = 0; i < chain.size() - n; ++i) {
+			if(chain.get(i).aural_match(chain.get(i + n)) &&
+			   chain.get(i).visual_match(chain.get(i + n))) {
+				Log.v(TAG, "Dual match");
+				++dual_matches;
+			}
+		}
+
+		if(dual_matches != 2) {
+			Log.v(TAG, "Wrong number of dual matches");
+			return false;
+		}
+
+		if(chain.size() != n + 20) {
+			Log.v(TAG, "Invalid size for chain");
+			return false;
+		}
+
+		Log.v(TAG, "Success verifying chain");
+		return true;
+	}
+
+	private ArrayList<Stimulus> buildTestChain()
+	{
+		ArrayList<Stimulus> test = new ArrayList<Stimulus>();
+
+		// 4 visual matches, all on 0,0
+		test.add(new Stimulus(0, 0));
+		test.add(new Stimulus(1, 1));
+		test.add(new Stimulus(0, 1));
+		test.add(new Stimulus(3, 2));
+		test.add(new Stimulus(0, 2));
+		test.add(new Stimulus(5, 3));
+		test.add(new Stimulus(0, 3));
+		test.add(new Stimulus(7, 4));
+		test.add(new Stimulus(0, 4));
+
+		// 4 audio only matches, all on 0
+		test.add(new Stimulus(0, 0));
+		test.add(new Stimulus(1, 1));
+		test.add(new Stimulus(1, 0));
+		test.add(new Stimulus(2, 2));
+		test.add(new Stimulus(2, 0));
+		test.add(new Stimulus(3, 3));
+		test.add(new Stimulus(3, 0));
+		test.add(new Stimulus(4, 4));
+		test.add(new Stimulus(4, 0));
+
+		// 2 dual matches
+		test.add(new Stimulus(2, 1));
+		test.add(new Stimulus(2, 1));
+		test.add(new Stimulus(2, 1));
+		test.add(new Stimulus(2, 1));
+
+		return test;
+	}
+
+    private void sanityTest()
+	{
+		ArrayList<Stimulus> test = buildTestChain();
+
+		if(!verifyStimulusChain(2, test)) {
+			new AlertDialog.Builder(this)
+				.setMessage("Verifying stimulus chain failed! You found a bug!")
+				.show();
+
+			return;
+		}
+	}
+
+	public void playLevel(int n, Grid grid)
+	{
+		ArrayList<Stimulus> test = buildTestChain();
+		
 		stimulus_timer_ = new Timer();
 		stimulus_timer_.scheduleAtFixedRate(new NextStimulus(grid, test.iterator()), 0, 1000);
-    }
+	}
 }
