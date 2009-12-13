@@ -144,6 +144,8 @@ class NextStimulus extends Thread
 
 			realWait(2500);
 		}
+
+		Log.v(TAG, "Finished playing back stimulus.");
 	}
 }
 
@@ -189,6 +191,14 @@ public class DualNBack extends Activity
 
 		playLevel(2, grid);
     }
+
+	@Override
+	protected void onPause()
+	{
+		super.onPause();
+		setResult(RESULT_OK);
+		finish();
+	}
 
 	private boolean verifyStimulusChain(int n, ArrayList<Stimulus> chain)
 	{
