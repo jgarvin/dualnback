@@ -18,15 +18,15 @@ import java.util.*;
 import android.app.AlertDialog;
 
 class Pair<T, S> {
-  public Pair(T f, S s){ 
+  public Pair(T f, S s){
     first = f;
-    second = s;   
+    second = s;
   }
- 
-  public String toString()  { 
-    return "(" + first.toString() + ", " + second.toString() + ")"; 
+
+  public String toString()  {
+    return "(" + first.toString() + ", " + second.toString() + ")";
   }
- 
+
   public T first;
   public S second;
 }
@@ -95,36 +95,39 @@ class Stimulus
 			loc.first += spiral.get(i).first;
 			loc.second += spiral.get(i).second;
 		}
-		
+
 		x.lightSquare(loc.first, loc.second);
 	}
-	
+
 	void play_sound() {}
 }
 
 class NextStimulus extends TimerTask
 {
-	private Grid grid;
+	private Grid grid_;
 	private View to_update;
+	private Timer timer_;
 
 	private int x;
 	private Iterator<Stimulus> current_stimuli_;
-	
-	public NextStimulus(Grid to_light, Iterator<Stimulus> stimuli) {
+
+	public NextStimulus(Timer timer, Grid to_light, Iterator<Stimulus> stimuli) {
 		super();
-		
-		grid = to_light;
+
+		timer_ = timer_;
+		grid_ = to_light;
 		current_stimuli_ = stimuli;
 	}
-	
+
 	public void run() {
 		if(!current_stimuli_.hasNext()) {
 			cancel();
+			timer_.notifyAll();
 		}
 		else {
 			Stimulus current = current_stimuli_.next();
-			current.display_visual(grid);
-			grid.postInvalidate();
+			current.display_visual(grid_);
+			grid_.postInvalidate();
 			current.play_sound();
 		}
 	}
@@ -135,13 +138,13 @@ public class DualNBack extends Activity
 	private static final String TAG = "DualNBack";
 
 	private Timer stimulus_timer_;
-	
+
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
 		Log.v(TAG, "Starting up...");
-		
+
         super.onCreate(savedInstanceState);
 		TextView tv = new TextView(this);
 		tv.setText("test1");
@@ -164,7 +167,7 @@ public class DualNBack extends Activity
 
 		buttonLayout.addView(audioButton, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
 		buttonLayout.addView(videoButton, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
-		
+
 		topLayout.addView(buttonLayout, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.9f));
 		setContentView(topLayout);
 
@@ -176,7 +179,7 @@ public class DualNBack extends Activity
 	private boolean verifyStimulusChain(int n, ArrayList<Stimulus> chain)
 	{
 		Log.v(TAG, "Verifying chain...");
-		
+
 		int visual_matches = 0;
 		for(int i = 0; i < chain.size() - n; ++i) {
 			if(chain.get(i).visual_match(chain.get(i + n)) &&
@@ -237,7 +240,7 @@ public class DualNBack extends Activity
 		for(int i = 0; i < n; ++i) {
 			level.add(new Stimulus(generator.nextInt(8), generator.nextInt(8)));
 		}
-		
+
 		// Represents the space left between stimulus n and n + 20
 		ArrayList<Integer> matches = new ArrayList<Integer>();
 
@@ -245,16 +248,16 @@ public class DualNBack extends Activity
 		matches.add(1);
 		matches.add(1);
 		matches.add(1);
-		
+
 		matches.add(2);
 		matches.add(2);
 		matches.add(2);
 		matches.add(2);
-		
+
 		matches.add(3);
 		matches.add(3);
 
-		// n to n 20 is the range, but we've already asserted there will be 10 matches.
+		// n to n + 20 is the range, but we've already asserted there will be 10 matches.
 		// Now we pad with non-matches
 		for(int i = n; i < n + 20 - 10; ++i) {
 			matches.add(0);
@@ -268,7 +271,7 @@ public class DualNBack extends Activity
 
 			boolean match_visual = false;
 			boolean match_aural = false;
-			
+
 			switch(match_type) {
 				case 0:
 					match_visual = false;
@@ -332,27 +335,41 @@ public class DualNBack extends Activity
     private void sanityTest()
 	{
 		if(!verifyStimulusChain(2, buildTestChain())) {
-			new AlertDialog.Builder(this)
-				.setMessage("Verifying stimulus chain sanity test failed! You found a bug!")
-				.show();
-
+			debugAlert("Verifying stimulus chain sanity test failed! You found a bug!");
 			return;
 		}
 
 		if(!verifyStimulusChain(2, genLevel(2))) {
-			new AlertDialog.Builder(this)
-				.setMessage("buildTestChain sanity test failed! You found a bug!")
-				.show();
-
+			debugAlert("buildTestChain sanity test failed! You found a bug!");
 			return;
-		}		
+		}
+	}
+
+	private void debugAlert(String alert) {
+		new AlertDialog.Builder(this)
+			.setMessage(alert)
+			.show();
 	}
 
 	public void playLevel(int n, Grid grid)
 	{
 		ArrayList<Stimulus> level = genLevel(n);
-		
+
+		if(!verifyStimulusChain(n, genLevel(n))) {
+			debugAlert("level generation sanity test failed! You found a bug!");
+			return;
+		}
+
 		stimulus_timer_ = new Timer();
-		stimulus_timer_.scheduleAtFixedRate(new NextStimulus(grid, level.iterator()), 0, 1000);
+		stimulus_timer_.scheduleAtFixedRate(new NextStimulus(stimulus_timer_, grid, level.iterator()), 0, 500);
+
+		// try {
+		// 	synchronized(stimulus_timer_) {
+		// 		stimulus_timer_.wait();
+		// 	}
+		// } catch(InterruptedException e) {
+		// }
+
+		debugAlert("Finished");
 	}
 }
