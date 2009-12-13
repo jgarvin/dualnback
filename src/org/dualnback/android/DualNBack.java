@@ -43,11 +43,39 @@ class Stimulus
 	}
 
 	public boolean visual_match(Stimulus other) {
-		return box_loc_ == other.box_loc_;
+		return equivalent(box_loc_, other.box_loc_);
 	}
 
 	public boolean aural_match(Stimulus other) {
-		return sound_index_ == other.sound_index_;
+		return equivalent(sound_index_, other.sound_index_);
+	}
+
+	private static boolean equivalent(int a, int b) {
+		// -1 counts as not filled in, and never counts as a match
+		return a != -1 && b != -1 && a == b;
+	}
+
+	public static Stimulus make_random(Stimulus other, boolean match_visual, boolean match_audio) {
+		int sound_index;
+		int box_loc;
+
+		Random generator = new Random();
+
+		if(match_visual)
+			box_loc = other.box_loc_;
+		else
+			do {
+				box_loc = generator.nextInt(8);
+			} while(box_loc == other.box_loc_);
+
+		if(match_audio)
+			sound_index = other.sound_index_;
+		else
+			do {
+				sound_index = generator.nextInt(8);
+			} while(sound_index == other.sound_index_);
+
+		return new Stimulus(box_loc, sound_index);
 	}
 
 	void display_visual(Grid x) {
@@ -200,6 +228,72 @@ public class DualNBack extends Activity
 		return true;
 	}
 
+	private ArrayList<Stimulus> genLevel(int n)
+	{
+		ArrayList<Stimulus> level = new ArrayList<Stimulus>();
+		Random generator = new Random();
+
+		// Before n stimulus, it's impossible to have a match
+		for(int i = 0; i < n; ++i) {
+			level.add(new Stimulus(generator.nextInt(8), generator.nextInt(8)));
+		}
+		
+		// Represents the space left between stimulus n and n + 20
+		ArrayList<Integer> matches = new ArrayList<Integer>();
+
+		matches.add(1);
+		matches.add(1);
+		matches.add(1);
+		matches.add(1);
+		
+		matches.add(2);
+		matches.add(2);
+		matches.add(2);
+		matches.add(2);
+		
+		matches.add(3);
+		matches.add(3);
+
+		// n to n 20 is the range, but we've already asserted there will be 10 matches.
+		// Now we pad with non-matches
+		for(int i = n; i < n + 20 - 10; ++i) {
+			matches.add(0);
+		}
+
+		Collections.shuffle(matches);
+
+		Iterator<Integer> current_match = matches.iterator();
+		for(int i = n; i < n + 20; ++i) {
+			int match_type = current_match.next();
+
+			boolean match_visual = false;
+			boolean match_aural = false;
+			
+			switch(match_type) {
+				case 0:
+					match_visual = false;
+					match_aural = false;
+					break;
+				case 1:
+					match_visual = true;
+					match_aural = false;
+					break;
+				case 2:
+					match_visual = false;
+					match_aural = true;
+					break;
+				case 3:
+					match_visual = true;
+					match_aural = true;
+					break;
+			}
+
+			level.add(Stimulus.make_random(level.get(i - n), match_visual, match_aural));
+		}
+
+		return level;
+	}
+
 	private ArrayList<Stimulus> buildTestChain()
 	{
 		ArrayList<Stimulus> test = new ArrayList<Stimulus>();
@@ -237,22 +331,28 @@ public class DualNBack extends Activity
 
     private void sanityTest()
 	{
-		ArrayList<Stimulus> test = buildTestChain();
-
-		if(!verifyStimulusChain(2, test)) {
+		if(!verifyStimulusChain(2, buildTestChain())) {
 			new AlertDialog.Builder(this)
-				.setMessage("Verifying stimulus chain failed! You found a bug!")
+				.setMessage("Verifying stimulus chain sanity test failed! You found a bug!")
 				.show();
 
 			return;
 		}
+
+		if(!verifyStimulusChain(2, genLevel(2))) {
+			new AlertDialog.Builder(this)
+				.setMessage("buildTestChain sanity test failed! You found a bug!")
+				.show();
+
+			return;
+		}		
 	}
 
 	public void playLevel(int n, Grid grid)
 	{
-		ArrayList<Stimulus> test = buildTestChain();
+		ArrayList<Stimulus> level = genLevel(n);
 		
 		stimulus_timer_ = new Timer();
-		stimulus_timer_.scheduleAtFixedRate(new NextStimulus(grid, test.iterator()), 0, 1000);
+		stimulus_timer_.scheduleAtFixedRate(new NextStimulus(grid, level.iterator()), 0, 1000);
 	}
 }
