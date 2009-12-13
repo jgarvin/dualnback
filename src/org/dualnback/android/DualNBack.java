@@ -102,33 +102,47 @@ class Stimulus
 	void play_sound() {}
 }
 
-class NextStimulus extends TimerTask
+class NextStimulus extends Thread
 {
+	private static final String TAG = "NextStimulus";
+	
 	private Grid grid_;
 	private View to_update;
-	private Timer timer_;
 
 	private int x;
 	private Iterator<Stimulus> current_stimuli_;
 
-	public NextStimulus(Timer timer, Grid to_light, Iterator<Stimulus> stimuli) {
+	public NextStimulus(Grid to_light, Iterator<Stimulus> stimuli) {
 		super();
 
-		timer_ = timer_;
 		grid_ = to_light;
 		current_stimuli_ = stimuli;
 	}
 
+	private void realWait(long ms) {
+		Log.v(TAG, String.format("%dms wait", ms));
+		try {
+			sleep(ms);
+		} catch(InterruptedException e) {}		
+	}
+
 	public void run() {
-		if(!current_stimuli_.hasNext()) {
-			cancel();
-			timer_.notifyAll();
-		}
-		else {
+		Log.v(TAG, "Starting stimulus thread...");
+		
+		while(current_stimuli_.hasNext()) {
+			Log.v(TAG, "Begin stimulus display loop iteration");
+			
 			Stimulus current = current_stimuli_.next();
+			current.play_sound();
 			current.display_visual(grid_);
 			grid_.postInvalidate();
-			current.play_sound();
+
+			realWait(500);
+			
+			grid_.clear();
+			grid_.postInvalidate();
+
+			realWait(2500);
 		}
 	}
 }
@@ -137,7 +151,7 @@ public class DualNBack extends Activity
 {
 	private static final String TAG = "DualNBack";
 
-	private Timer stimulus_timer_;
+	private Thread stimulus_thread_;
 
     /** Called when the activity is first created. */
     @Override
@@ -360,16 +374,7 @@ public class DualNBack extends Activity
 			return;
 		}
 
-		stimulus_timer_ = new Timer();
-		stimulus_timer_.scheduleAtFixedRate(new NextStimulus(stimulus_timer_, grid, level.iterator()), 0, 500);
-
-		// try {
-		// 	synchronized(stimulus_timer_) {
-		// 		stimulus_timer_.wait();
-		// 	}
-		// } catch(InterruptedException e) {
-		// }
-
-		debugAlert("Finished");
+		stimulus_thread_ = new Thread(new NextStimulus(grid, level.iterator()));
+		stimulus_thread_.start();
 	}
 }

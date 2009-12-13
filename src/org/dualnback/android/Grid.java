@@ -34,6 +34,11 @@ public class Grid extends View {
 		lit_square_y_ = y;
 	}
 
+	public void clear() {
+		lit_square_x_ = -1;
+		lit_square_y_ = -1;
+	}
+
     protected void onDraw(Canvas canvas) {
 		super.onDraw(canvas);
 
