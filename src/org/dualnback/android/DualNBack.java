@@ -20,21 +20,21 @@ import java.util.*;
 
 import android.app.AlertDialog;
 
-class NextStimulus extends Thread
+class StimulusFlipper extends Thread
 {
-	private static final String TAG = "NextStimulus";
+	private static final String TAG = "StimulusFlipper";
 	
 	private Grid grid_;
-	private View to_update;
 
-	private int x;
-	private Iterator<Stimulus> current_stimuli_;
+	private Iterator<Stimulus> stimuli_iter_;
+	private int current_stimulus_index_;
 
-	public NextStimulus(Grid to_light, Iterator<Stimulus> stimuli) {
+	StimulusFlipper(Grid to_light, Iterator<Stimulus> start_iterator) {
 		super();
 
 		grid_ = to_light;
-		current_stimuli_ = stimuli;
+		stimuli_iter_ = start_iterator;
+		current_stimulus_index_ = -1;
 	}
 
 	private void realWait(long ms) {
@@ -47,16 +47,17 @@ class NextStimulus extends Thread
 	public void run() {
 		Log.v(TAG, "Starting stimulus thread...");
 		
-		while(current_stimuli_.hasNext()) {
+		while(stimuli_iter_.hasNext()) {
 			Log.v(TAG, "Begin stimulus display loop iteration");
 
 			Stimulus current;
-			synchronized(current_stimuli_) {
-				current = current_stimuli_.next();
+			synchronized(stimuli_iter_) {
+				current = stimuli_iter_.next();
+				current_stimulus_index_ += 1;
 			}
 			
-			current.play_sound();
-			current.display_visual(grid_);
+			current.playSound();
+			current.displayVisual(grid_);
 			grid_.postInvalidate();
 
 			realWait(500);
@@ -69,114 +70,59 @@ class NextStimulus extends Thread
 
 		Log.v(TAG, "Finished playing back stimulus.");
 	}
+
+	public int currentStimulusIndex() {
+		synchronized(stimuli_iter_) {
+			return current_stimulus_index_;
+		}
+	}
 }
 
-public class DualNBack extends Activity
+class Scorer extends Object
+{
+	private int visualMatches;
+	private int auralMatches;
+
+	Level level_;
+	private StimulusFlipper flipper_;
+
+	Scorer(Level level, StimulusFlipper flipper)
+	{
+		level_ = level;
+		flipper_ = flipper;
+	}
+
+	public void allegedVisualMatch() {
+		if(level_.visualMatch(flipper_.currentStimulusIndex()))
+			visualMatches += 1;
+	}
+
+	public void allegedAuralMatch() {
+		if(level_.auralMatch(flipper_.currentStimulusIndex()))
+			auralMatches += 1;
+	}
+}
+
+class Level extends Object
 {
 	private static final String TAG = "DualNBack";
 
-	private Thread stimulus_thread_;
+	private ArrayList<Stimulus> stimuli_;
+	private int n_;
 
-	private Iterator<Stimulus> current_stimuli_;
+	private DualNBack game_;
 
-    /** Called when the activity is first created. */
-    @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
-		Log.v(TAG, "Starting up...");
-
-        super.onCreate(savedInstanceState);
-		TextView tv = new TextView(this);
-		tv.setText("test1");
-
-		LinearLayout topLayout = new LinearLayout(this);
-		topLayout.setOrientation(LinearLayout.VERTICAL);
-		topLayout.setGravity(Gravity.FILL);
-		topLayout.setWeightSum(1.0f);
-
-		Grid grid = new Grid(this);
-		topLayout.addView(grid, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.1f));
-
-		LinearLayout buttonLayout = new LinearLayout(this);
-		buttonLayout.setOrientation(LinearLayout.HORIZONTAL);
-
-		Button audioButton = new Button(this);
-		audioButton.setText("Aural");
-		Button videoButton = new Button(this);
-		videoButton.setText("Visual");
-
-		buttonLayout.addView(audioButton, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
-		buttonLayout.addView(videoButton, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
-
-		topLayout.addView(buttonLayout, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.9f));
-		setContentView(topLayout);
+	Level(DualNBack game, int n)
+	{
+		n_ = n;
+		game_ = game;
+		stimuli_ = genLevel(n);
 
 		sanityTest();
-
-		playLevel(2, grid);
-    }
-
-	@Override
-	protected void onPause()
-	{
-		super.onPause();
-		setResult(RESULT_OK);
-		finish();
 	}
 
-	private boolean verifyStimulusChain(int n, ArrayList<Stimulus> chain)
-	{
-		Log.v(TAG, "Verifying chain...");
-
-		int visual_matches = 0;
-		for(int i = 0; i < chain.size() - n; ++i) {
-			if(chain.get(i).visual_match(chain.get(i + n)) &&
-			   !chain.get(i).aural_match(chain.get(i + n))) {
-				Log.v(TAG, "Visual match");
-				++visual_matches;
-			}
-		}
-
-		if(visual_matches != 4) {
-			Log.v(TAG, "Wrong number of visual matches");
-			return false;
-		}
-
-		int aural_matches = 0;
-		for(int i = 0; i < chain.size() - n; ++i) {
-			if(chain.get(i).aural_match(chain.get(i + n)) &&
-			   !chain.get(i).visual_match(chain.get(i + n))) {
-				Log.v(TAG, "Aural match");
-				++aural_matches;
-			}
-		}
-
-		if(aural_matches != 4) {
-			Log.v(TAG, "Wrong number of audio matches");
-			return false;
-		}
-
-		int dual_matches = 0;
-		for(int i = 0; i < chain.size() - n; ++i) {
-			if(chain.get(i).aural_match(chain.get(i + n)) &&
-			   chain.get(i).visual_match(chain.get(i + n))) {
-				Log.v(TAG, "Dual match");
-				++dual_matches;
-			}
-		}
-
-		if(dual_matches != 2) {
-			Log.v(TAG, "Wrong number of dual matches");
-			return false;
-		}
-
-		if(chain.size() != n + 20) {
-			Log.v(TAG, "Invalid size for chain");
-			return false;
-		}
-
-		Log.v(TAG, "Success verifying chain");
-		return true;
+	public Iterator<Stimulus> start() {
+		return stimuli_.iterator();
 	}
 
 	private ArrayList<Stimulus> genLevel(int n)
@@ -239,13 +185,89 @@ public class DualNBack extends Activity
 					break;
 			}
 
-			level.add(Stimulus.make_random(level.get(i - n), match_visual, match_aural));
+			level.add(Stimulus.makeRandom(level.get(i - n), match_visual, match_aural));
+		}
+
+		if(!verifyStimulusChain(n, level)) {
+			debugAlert("level generation sanity test failed! You found a bug!");
+			return null;
 		}
 
 		return level;
 	}
 
-	private ArrayList<Stimulus> buildTestChain()
+	public boolean visualMatch(int i) {
+		if(i < n_) {
+			return false;
+		}
+
+		return stimuli_.get(i).visualMatch(stimuli_.get(i - n_));
+	}
+
+	public boolean auralMatch(int i) {
+		if(i < n_) {
+			return false;
+		}
+
+		return stimuli_.get(i).auralMatch(stimuli_.get(i - n_));
+	}
+
+	private static boolean verifyStimulusChain(int n, ArrayList<Stimulus> chain)
+	{
+		Log.v(TAG, "Verifying chain...");
+
+		int visualMatches = 0;
+		for(int i = 0; i < chain.size() - n; ++i) {
+			if(chain.get(i).visualMatch(chain.get(i + n)) &&
+			   !chain.get(i).auralMatch(chain.get(i + n))) {
+				Log.v(TAG, "Visual match");
+				++visualMatches;
+			}
+		}
+
+		if(visualMatches != 4) {
+			Log.v(TAG, "Wrong number of visual matches");
+			return false;
+		}
+
+		int auralMatches = 0;
+		for(int i = 0; i < chain.size() - n; ++i) {
+			if(chain.get(i).auralMatch(chain.get(i + n)) &&
+			   !chain.get(i).visualMatch(chain.get(i + n))) {
+				Log.v(TAG, "Aural match");
+				++auralMatches;
+			}
+		}
+
+		if(auralMatches != 4) {
+			Log.v(TAG, "Wrong number of audio matches");
+			return false;
+		}
+
+		int dual_matches = 0;
+		for(int i = 0; i < chain.size() - n; ++i) {
+			if(chain.get(i).auralMatch(chain.get(i + n)) &&
+			   chain.get(i).visualMatch(chain.get(i + n))) {
+				Log.v(TAG, "Dual match");
+				++dual_matches;
+			}
+		}
+
+		if(dual_matches != 2) {
+			Log.v(TAG, "Wrong number of dual matches");
+			return false;
+		}
+
+		if(chain.size() != n + 20) {
+			Log.v(TAG, "Invalid size for chain");
+			return false;
+		}
+
+		Log.v(TAG, "Success verifying chain");
+		return true;
+	}
+
+	private static ArrayList<Stimulus> buildTestChain()
 	{
 		ArrayList<Stimulus> test = new ArrayList<Stimulus>();
 
@@ -294,23 +316,71 @@ public class DualNBack extends Activity
 	}
 
 	private void debugAlert(String alert) {
-		new AlertDialog.Builder(this)
+		new AlertDialog.Builder(game_)
 			.setMessage(alert)
 			.show();
 	}
+}
 
-	public void playLevel(int n, Grid grid)
+public class DualNBack extends Activity
+{
+	private static final String TAG = "DualNBack";
+
+	private Thread stimulus_thread_;
+
+	private Iterator<Stimulus> current_stimuli_;
+	private Level current_level_;
+
+    /** Called when the activity is first created. */
+    @Override
+    public void onCreate(Bundle savedInstanceState)
+    {
+		Log.v(TAG, "Starting up...");
+
+        super.onCreate(savedInstanceState);
+		TextView tv = new TextView(this);
+		tv.setText("test1");
+
+		LinearLayout topLayout = new LinearLayout(this);
+		topLayout.setOrientation(LinearLayout.VERTICAL);
+		topLayout.setGravity(Gravity.FILL);
+		topLayout.setWeightSum(1.0f);
+
+		Grid grid = new Grid(this);
+		topLayout.addView(grid, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.1f));
+
+		LinearLayout buttonLayout = new LinearLayout(this);
+		buttonLayout.setOrientation(LinearLayout.HORIZONTAL);
+
+		Button audioButton = new Button(this);
+		audioButton.setText("Aural");
+		Button videoButton = new Button(this);
+		videoButton.setText("Visual");
+
+		buttonLayout.addView(audioButton, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
+		buttonLayout.addView(videoButton, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
+
+		topLayout.addView(buttonLayout, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.9f));
+		setContentView(topLayout);
+
+		play(grid);
+    }
+
+	@Override
+	protected void onPause()
 	{
-		ArrayList<Stimulus> level = genLevel(n);
+		super.onPause();
+		setResult(RESULT_OK);
+		finish();
+	}
 
-		if(!verifyStimulusChain(n, genLevel(n))) {
-			debugAlert("level generation sanity test failed! You found a bug!");
-			return;
-		}
-
-		current_stimuli_ = level.iterator();
-
-		stimulus_thread_ = new Thread(new NextStimulus(grid, current_stimuli_));
+	public void play(Grid grid)
+	{
+		current_level_= new Level(this, 2);
+		
+		current_stimuli_ = current_level_.start();
+		stimulus_thread_ = new Thread(new StimulusFlipper(grid, current_stimuli_));
+		
 		stimulus_thread_.start();
 	}
 }

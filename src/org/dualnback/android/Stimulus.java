@@ -16,11 +16,11 @@ public class Stimulus
 		sound_index_ = sound_index;
 	}
 
-	public boolean visual_match(Stimulus other) {
+	public boolean visualMatch(Stimulus other) {
 		return equivalent(box_loc_, other.box_loc_);
 	}
 
-	public boolean aural_match(Stimulus other) {
+	public boolean auralMatch(Stimulus other) {
 		return equivalent(sound_index_, other.sound_index_);
 	}
 
@@ -29,7 +29,7 @@ public class Stimulus
 		return a != -1 && b != -1 && a == b;
 	}
 
-	public static Stimulus make_random(Stimulus other, boolean match_visual, boolean match_audio) {
+	public static Stimulus makeRandom(Stimulus other, boolean match_visual, boolean match_audio) {
 		int sound_index;
 		int box_loc;
 
@@ -52,7 +52,7 @@ public class Stimulus
 		return new Stimulus(box_loc, sound_index);
 	}
 
-	void display_visual(Grid x) {
+	void displayVisual(Grid x) {
 		Pair<Integer, Integer> d = new Pair(0, 1);
 		Pair<Integer, Integer> r = new Pair(1, 0);
 		Pair<Integer, Integer> u = new Pair(0, -1);
@@ -73,5 +73,5 @@ public class Stimulus
 		x.lightSquare(loc.first, loc.second);
 	}
 
-	void play_sound() {}
+	void playSound() {}
 }
