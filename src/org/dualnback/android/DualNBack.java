@@ -23,7 +23,7 @@ import android.app.AlertDialog;
 class StimulusFlipper extends Thread
 {
 	private static final String TAG = "StimulusFlipper";
-	
+
 	private Grid grid_;
 
 	private Iterator<Stimulus> stimuli_iter_;
@@ -41,12 +41,12 @@ class StimulusFlipper extends Thread
 		Log.v(TAG, String.format("%dms wait", ms));
 		try {
 			sleep(ms);
-		} catch(InterruptedException e) {}		
+		} catch(InterruptedException e) {}
 	}
 
 	public void run() {
 		Log.v(TAG, "Starting stimulus thread...");
-		
+
 		while(stimuli_iter_.hasNext()) {
 			Log.v(TAG, "Begin stimulus display loop iteration");
 
@@ -55,13 +55,13 @@ class StimulusFlipper extends Thread
 				current = stimuli_iter_.next();
 				current_stimulus_index_ += 1;
 			}
-			
+
 			current.playSound();
 			current.displayVisual(grid_);
 			grid_.postInvalidate();
 
 			realWait(500);
-			
+
 			grid_.clear();
 			grid_.postInvalidate();
 
@@ -78,7 +78,7 @@ class StimulusFlipper extends Thread
 	}
 }
 
-class Scorer extends Object
+class ScoreKeeper extends Object
 {
 	private int visualMatches;
 	private int auralMatches;
@@ -86,20 +86,28 @@ class Scorer extends Object
 	Level level_;
 	private StimulusFlipper flipper_;
 
-	Scorer(Level level, StimulusFlipper flipper)
+	ScoreKeeper(Level level, StimulusFlipper flipper)
 	{
 		level_ = level;
 		flipper_ = flipper;
 	}
 
-	public void allegedVisualMatch() {
-		if(level_.visualMatch(flipper_.currentStimulusIndex()))
+	public boolean allegedVisualMatch() {
+		if(level_.visualMatch(flipper_.currentStimulusIndex())) {
 			visualMatches += 1;
+			return true;
+		}
+
+		return false;
 	}
 
-	public void allegedAuralMatch() {
-		if(level_.auralMatch(flipper_.currentStimulusIndex()))
+	public boolean allegedAuralMatch() {
+		if(level_.auralMatch(flipper_.currentStimulusIndex())) {
 			auralMatches += 1;
+			return true;
+		}
+
+		return false;
 	}
 }
 
@@ -330,6 +338,14 @@ public class DualNBack extends Activity
 
 	private Iterator<Stimulus> current_stimuli_;
 	private Level current_level_;
+	private ScoreKeeper score_keeper_;
+
+	private void giveFeedback(View ruler, boolean good) {
+		if(good)
+			ruler.setBackgroundColor(0xFF00FF00);
+		else
+			ruler.setBackgroundColor(0xFFFF0000);
+	}
 
     /** Called when the activity is first created. */
     @Override
@@ -349,16 +365,32 @@ public class DualNBack extends Activity
 		Grid grid = new Grid(this);
 		topLayout.addView(grid, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.1f));
 
+		final View ruler = new View(this);
+		ruler.setBackgroundColor(0xFFFFFFFF);
+		topLayout.addView(ruler, new LinearLayout.LayoutParams( LayoutParams.FILL_PARENT, 2));
+
 		LinearLayout buttonLayout = new LinearLayout(this);
 		buttonLayout.setOrientation(LinearLayout.HORIZONTAL);
 
-		Button audioButton = new Button(this);
-		audioButton.setText("Aural");
-		Button videoButton = new Button(this);
-		videoButton.setText("Visual");
+		Button audio_button = new Button(this);
+		audio_button.setText("Aural");
+		Button visual_button = new Button(this);
+		visual_button.setText("Visual");
 
-		buttonLayout.addView(audioButton, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
-		buttonLayout.addView(videoButton, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
+		audio_button.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) {
+				giveFeedback(ruler, score_keeper_.allegedAuralMatch());
+			}
+		});
+
+		visual_button.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) {
+				giveFeedback(ruler, score_keeper_.allegedVisualMatch());
+			}
+		});
+
+		buttonLayout.addView(audio_button, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
+		buttonLayout.addView(visual_button, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
 
 		topLayout.addView(buttonLayout, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.9f));
 		setContentView(topLayout);
@@ -377,10 +409,12 @@ public class DualNBack extends Activity
 	public void play(Grid grid)
 	{
 		current_level_= new Level(this, 2);
-		
 		current_stimuli_ = current_level_.start();
-		stimulus_thread_ = new Thread(new StimulusFlipper(grid, current_stimuli_));
-		
+
+		StimulusFlipper flipper = new StimulusFlipper(grid, current_stimuli_);
+		score_keeper_ = new ScoreKeeper(current_level_, flipper);
+		stimulus_thread_ = new Thread(flipper);
+
 		stimulus_thread_.start();
 	}
 }
