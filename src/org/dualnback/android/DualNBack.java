@@ -44,9 +44,7 @@ class StimulusFlipper extends Thread
 		} catch(InterruptedException e) {}
 	}
 
-	public void run() {
-		Log.v(TAG, "Starting stimulus thread...");
-
+	private void startFlipping() {
 		while(stimuli_iter_.hasNext()) {
 			Log.v(TAG, "Begin stimulus display loop iteration");
 
@@ -66,6 +64,16 @@ class StimulusFlipper extends Thread
 			grid_.postInvalidate();
 
 			realWait(2500);
+		}
+	}
+
+	public void run() {
+		Log.v(TAG, "Starting stimulus thread...");
+
+		try {
+			startFlipping();
+		} catch(Exception e) {
+			Log.v(TAG, e.toString());
 		}
 
 		Log.v(TAG, "Finished playing back stimulus.");
@@ -330,6 +338,47 @@ class Level extends Object
 	}
 }
 
+class FeedbackRuler extends View {
+	private Timer feedback_clear_;
+
+	public void activate(boolean good) {
+		if(good)
+			setBackgroundColor(0xFF00FF00);
+		else
+			setBackgroundColor(0xFFFF0000);
+
+		ruler.invalidate();
+
+		feedback_clear_ = new Timer();
+
+		feedback_clear_.schedule(new TimerTask() {
+			public void run() {
+				try {
+					setBackgroundColor(0xFF0000FF);
+					postInvalidate();
+				} catch(Exception e) {
+					Log.v(TAG, e.toString());
+				}
+			}
+		}, 10);
+	}
+
+	// TODO: Replace this with just drawing a solid color
+	protected void onDraw(Canvas canvas) {
+		super.onDraw(canvas);
+
+		final int square_width = getWidth() / 3;
+		final int square_height = getHeight() / 3;
+		
+		int pos_x = lit_square_x_ * square_width;
+		int pos_y = lit_square_y_ * square_height;
+
+		drawable_.setBounds(pos_x, pos_y, pos_x + square_width, pos_y + square_height);
+
+        drawable_.draw(canvas);
+    }
+}
+
 public class DualNBack extends Activity
 {
 	private static final String TAG = "DualNBack";
@@ -339,13 +388,7 @@ public class DualNBack extends Activity
 	private Iterator<Stimulus> current_stimuli_;
 	private Level current_level_;
 	private ScoreKeeper score_keeper_;
-
-	private void giveFeedback(View ruler, boolean good) {
-		if(good)
-			ruler.setBackgroundColor(0xFF00FF00);
-		else
-			ruler.setBackgroundColor(0xFFFF0000);
-	}
+	private FeedbackRuler ruler_;
 
     /** Called when the activity is first created. */
     @Override
@@ -363,11 +406,11 @@ public class DualNBack extends Activity
 		topLayout.setWeightSum(1.0f);
 
 		Grid grid = new Grid(this);
-		topLayout.addView(grid, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.1f));
+		topLayout.addView(grid, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.08f));
 
 		final View ruler = new View(this);
 		ruler.setBackgroundColor(0xFFFFFFFF);
-		topLayout.addView(ruler, new LinearLayout.LayoutParams( LayoutParams.FILL_PARENT, 2));
+		topLayout.addView(ruler, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, 1));
 
 		LinearLayout buttonLayout = new LinearLayout(this);
 		buttonLayout.setOrientation(LinearLayout.HORIZONTAL);
