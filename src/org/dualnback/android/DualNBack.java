@@ -10,6 +10,11 @@ import android.view.View;
 import android.view.Gravity;
 import android.view.ViewGroup.LayoutParams;
 
+import android.graphics.drawable.ShapeDrawable;
+import android.graphics.Canvas;
+import android.content.Context;
+import android.graphics.drawable.shapes.RectShape;
+
 import org.dualnback.android.Grid;
 import org.dualnback.android.Pair;
 import org.dualnback.android.Stimulus;
@@ -339,42 +344,43 @@ class Level extends Object
 }
 
 class FeedbackRuler extends View {
+	private static final String TAG = "FeedbackRuler";
+	private ShapeDrawable drawable_;
 	private Timer feedback_clear_;
+
+	public FeedbackRuler(Context context) {
+		super(context);
+
+		drawable_ = new ShapeDrawable(new RectShape());
+		drawable_.getPaint().setColor(0xff0000ff);
+	}
 
 	public void activate(boolean good) {
 		if(good)
-			setBackgroundColor(0xFF00FF00);
+			drawable_.getPaint().setColor(0xff00ff00);
 		else
-			setBackgroundColor(0xFFFF0000);
+			drawable_.getPaint().setColor(0xffff0000);
 
-		ruler.invalidate();
+		invalidate();
 
 		feedback_clear_ = new Timer();
 
 		feedback_clear_.schedule(new TimerTask() {
 			public void run() {
 				try {
-					setBackgroundColor(0xFF0000FF);
+					drawable_.getPaint().setColor(0xff0000ff);
 					postInvalidate();
 				} catch(Exception e) {
 					Log.v(TAG, e.toString());
 				}
 			}
-		}, 10);
+		}, 210);
 	}
 
-	// TODO: Replace this with just drawing a solid color
 	protected void onDraw(Canvas canvas) {
 		super.onDraw(canvas);
 
-		final int square_width = getWidth() / 3;
-		final int square_height = getHeight() / 3;
-		
-		int pos_x = lit_square_x_ * square_width;
-		int pos_y = lit_square_y_ * square_height;
-
-		drawable_.setBounds(pos_x, pos_y, pos_x + square_width, pos_y + square_height);
-
+		drawable_.setBounds(0, 0, getWidth(), getHeight());
         drawable_.draw(canvas);
     }
 }
@@ -408,9 +414,9 @@ public class DualNBack extends Activity
 		Grid grid = new Grid(this);
 		topLayout.addView(grid, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.08f));
 
-		final View ruler = new View(this);
-		ruler.setBackgroundColor(0xFFFFFFFF);
-		topLayout.addView(ruler, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, 1));
+		ruler_ = new FeedbackRuler(this);
+		ruler_.setBackgroundColor(0xFFFFFFFF);
+		topLayout.addView(ruler_, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, 1));
 
 		LinearLayout buttonLayout = new LinearLayout(this);
 		buttonLayout.setOrientation(LinearLayout.HORIZONTAL);
@@ -422,13 +428,13 @@ public class DualNBack extends Activity
 
 		audio_button.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
-				giveFeedback(ruler, score_keeper_.allegedAuralMatch());
+				ruler_.activate(score_keeper_.allegedAuralMatch());
 			}
 		});
 
 		visual_button.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
-				giveFeedback(ruler, score_keeper_.allegedVisualMatch());
+				ruler_.activate(score_keeper_.allegedVisualMatch());
 			}
 		});
 
