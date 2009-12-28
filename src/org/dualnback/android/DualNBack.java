@@ -10,10 +10,10 @@ import android.view.View;
 import android.view.Gravity;
 import android.view.ViewGroup.LayoutParams;
 
+import org.dualnback.android.FeedbackRuler;
 import org.dualnback.android.Grid;
 import org.dualnback.android.Pair;
 import org.dualnback.android.Stimulus;
-//import org.dualnback.android.FeedbackRuler;
 
 import android.widget.Button;
 
@@ -26,15 +26,17 @@ class StimulusFlipper extends Thread
 	private static final String TAG = "StimulusFlipper";
 
 	private Grid grid_;
+	FeedbackRuler ruler_;
 
 	private Iterator<Stimulus> stimuli_iter_;
 	private int current_stimulus_index_;
 
-	StimulusFlipper(Grid to_light, Iterator<Stimulus> start_iterator) {
+	StimulusFlipper(Grid to_light, FeedbackRuler deactivate_on_flip, Iterator<Stimulus> start_iterator) {
 		super();
 
 		grid_ = to_light;
 		stimuli_iter_ = start_iterator;
+		ruler_ = deactivate_on_flip;
 		current_stimulus_index_ = -1;
 	}
 
@@ -48,6 +50,9 @@ class StimulusFlipper extends Thread
 	private void startFlipping() {
 		while(stimuli_iter_.hasNext()) {
 			Log.v(TAG, "Begin stimulus display loop iteration");
+
+			ruler_.deactivate();
+			ruler_.postInvalidate();
 
 			Stimulus current;
 			synchronized(stimuli_iter_) {
@@ -384,12 +389,14 @@ public class DualNBack extends Activity
 		audio_button.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 				ruler_.activate(score_keeper_.allegedAuralMatch());
+				ruler_.invalidate();
 			}
 		});
 
 		visual_button.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 				ruler_.activate(score_keeper_.allegedVisualMatch());
+				ruler_.invalidate();
 			}
 		});
 
@@ -415,7 +422,7 @@ public class DualNBack extends Activity
 		current_level_= new Level(this, 2);
 		current_stimuli_ = current_level_.start();
 
-		StimulusFlipper flipper = new StimulusFlipper(grid, current_stimuli_);
+		StimulusFlipper flipper = new StimulusFlipper(grid, ruler_, current_stimuli_);
 		score_keeper_ = new ScoreKeeper(current_level_, flipper);
 		stimulus_thread_ = new Thread(flipper);
 
