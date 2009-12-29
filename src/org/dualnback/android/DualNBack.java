@@ -21,15 +21,19 @@ import java.util.*;
 
 import android.app.AlertDialog;
 
+import android.media.MediaPlayer;
+
 class StimulusFlipper extends Thread
 {
 	private static final String TAG = "StimulusFlipper";
 
 	private Grid grid_;
-	FeedbackRuler ruler_;
+	private FeedbackRuler ruler_;
 
 	private Iterator<Stimulus> stimuli_iter_;
 	private int current_stimulus_index_;
+
+	private MediaPlayer sound_player_;
 
 	StimulusFlipper(Grid to_light, FeedbackRuler deactivate_on_flip, Iterator<Stimulus> start_iterator) {
 		super();
@@ -37,6 +41,7 @@ class StimulusFlipper extends Thread
 		grid_ = to_light;
 		stimuli_iter_ = start_iterator;
 		ruler_ = deactivate_on_flip;
+		sound_player_ = new MediaPlayer();
 		current_stimulus_index_ = -1;
 	}
 
@@ -60,7 +65,9 @@ class StimulusFlipper extends Thread
 				current_stimulus_index_ += 1;
 			}
 
-			current.playSound();
+			sound_player_.reset();
+			current.playSound(sound_player_);
+			
 			current.displayVisual(grid_);
 			grid_.postInvalidate();
 
@@ -361,6 +368,8 @@ public class DualNBack extends Activity
     public void onCreate(Bundle savedInstanceState)
     {
 		Log.v(TAG, "Starting up...");
+
+		Stimulus.loadResources(getResources());
 
         super.onCreate(savedInstanceState);
 		TextView tv = new TextView(this);

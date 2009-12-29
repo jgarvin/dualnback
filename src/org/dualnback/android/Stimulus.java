@@ -5,10 +5,31 @@ import org.dualnback.android.Pair;
 import java.util.ArrayList;
 import java.util.Random;
 
+import android.media.MediaPlayer;
+
+import android.content.res.Resources;
+
+import java.io.FileDescriptor;
+
 public class Stimulus
 {
 	private int box_loc_;
 	private int sound_index_;
+
+	private static ArrayList<FileDescriptor> sounds_;
+
+	public static void loadResources(Resources res) {
+		sounds_ = new ArrayList<FileDescriptor>();
+
+		sounds_.add(res.openRawResourceFd(R.raw.c).getFileDescriptor());
+		sounds_.add(res.openRawResourceFd(R.raw.h).getFileDescriptor());
+		sounds_.add(res.openRawResourceFd(R.raw.k).getFileDescriptor());
+		sounds_.add(res.openRawResourceFd(R.raw.l).getFileDescriptor());
+		sounds_.add(res.openRawResourceFd(R.raw.q).getFileDescriptor());
+		sounds_.add(res.openRawResourceFd(R.raw.r).getFileDescriptor());
+		sounds_.add(res.openRawResourceFd(R.raw.s).getFileDescriptor());
+		sounds_.add(res.openRawResourceFd(R.raw.t).getFileDescriptor());
+	}
 
 	public Stimulus(int box_loc, int sound_index)
 	{
@@ -73,5 +94,12 @@ public class Stimulus
 		x.lightSquare(loc.first, loc.second);
 	}
 
-	void playSound() {}
+	void playSound(MediaPlayer mp) {
+		try {
+			mp.setDataSource(sounds_.get(sound_index_));
+			mp.prepare();
+			mp.start();
+		} catch(java.io.IOException e) {
+		}
+	}
 }
