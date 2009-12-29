@@ -8,27 +8,47 @@ import java.util.Random;
 import android.media.MediaPlayer;
 
 import android.content.res.Resources;
+import android.content.res.AssetFileDescriptor;
 
 import java.io.FileDescriptor;
+
+class SoundEntry {
+	public FileDescriptor descriptor_;
+	public long offset_;
+	public long length_;
+
+	SoundEntry(FileDescriptor descriptor, long offset, long length) {
+		descriptor_ = descriptor;
+		offset_ = offset;
+		length_ = length;
+	}
+}
 
 public class Stimulus
 {
 	private int box_loc_;
 	private int sound_index_;
 
-	private static ArrayList<FileDescriptor> sounds_;
+	private static ArrayList<SoundEntry> sounds_;
 
 	public static void loadResources(Resources res) {
-		sounds_ = new ArrayList<FileDescriptor>();
+		sounds_ = new ArrayList<SoundEntry>();
 
-		sounds_.add(res.openRawResourceFd(R.raw.c).getFileDescriptor());
-		sounds_.add(res.openRawResourceFd(R.raw.h).getFileDescriptor());
-		sounds_.add(res.openRawResourceFd(R.raw.k).getFileDescriptor());
-		sounds_.add(res.openRawResourceFd(R.raw.l).getFileDescriptor());
-		sounds_.add(res.openRawResourceFd(R.raw.q).getFileDescriptor());
-		sounds_.add(res.openRawResourceFd(R.raw.r).getFileDescriptor());
-		sounds_.add(res.openRawResourceFd(R.raw.s).getFileDescriptor());
-		sounds_.add(res.openRawResourceFd(R.raw.t).getFileDescriptor());
+		ArrayList<AssetFileDescriptor> temp = new ArrayList<AssetFileDescriptor>();
+
+		temp.add(res.openRawResourceFd(R.raw.c));
+		temp.add(res.openRawResourceFd(R.raw.h));
+		temp.add(res.openRawResourceFd(R.raw.k));
+		temp.add(res.openRawResourceFd(R.raw.l));
+		temp.add(res.openRawResourceFd(R.raw.q));
+		temp.add(res.openRawResourceFd(R.raw.r));
+		temp.add(res.openRawResourceFd(R.raw.s));
+		temp.add(res.openRawResourceFd(R.raw.t));
+			
+		for(int i = 0; i < 8; ++i) {
+			AssetFileDescriptor j = temp.get(i);
+			sounds_.add(new SoundEntry(j.getFileDescriptor(), j.getStartOffset(), j.getLength()));
+		}
 	}
 
 	public Stimulus(int box_loc, int sound_index)
@@ -96,7 +116,8 @@ public class Stimulus
 
 	void playSound(MediaPlayer mp) {
 		try {
-			mp.setDataSource(sounds_.get(sound_index_));
+			SoundEntry snd = sounds_.get(sound_index_);
+			mp.setDataSource(snd.descriptor_, snd.offset_, snd.length_);
 			mp.prepare();
 			mp.start();
 		} catch(java.io.IOException e) {

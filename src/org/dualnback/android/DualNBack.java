@@ -41,8 +41,33 @@ class StimulusFlipper extends Thread
 		grid_ = to_light;
 		stimuli_iter_ = start_iterator;
 		ruler_ = deactivate_on_flip;
-		sound_player_ = new MediaPlayer();
 		current_stimulus_index_ = -1;
+
+		sound_player_ = new MediaPlayer();
+		sound_player_.setOnInfoListener(new MediaPlayer.OnInfoListener() {
+			private static final String TAG = "dualnback media";
+			public boolean onInfo(MediaPlayer mp, int what, int extra) {
+				switch(what) {
+					case MediaPlayer.MEDIA_INFO_UNKNOWN:
+						Log.v(TAG, "MEDIA_INFO_UNKNOWN");
+						break;
+					case MediaPlayer.MEDIA_INFO_VIDEO_TRACK_LAGGING:
+						Log.v(TAG, "MEDIA_INFO_VIDEO_TRACK_LAGGING");
+						break;
+					case MediaPlayer.MEDIA_INFO_BAD_INTERLEAVING:
+						Log.v(TAG, "MEDIA_INFO_BAD_INTERLEAVING");
+						break;
+					case MediaPlayer.MEDIA_INFO_NOT_SEEKABLE:
+						Log.v(TAG, "MEDIA_INFO_NOT_SEEKABLE");
+						break;
+					case MediaPlayer.MEDIA_INFO_METADATA_UPDATE:
+						Log.v(TAG, "MEDIA_INFO_METADATA_UPDATE");
+						break;
+				}
+
+				return false;
+			}
+		});
 	}
 
 	private void realWait(long ms) {
