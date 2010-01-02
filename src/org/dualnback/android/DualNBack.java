@@ -10,10 +10,7 @@ import android.view.View;
 import android.view.Gravity;
 import android.view.ViewGroup.LayoutParams;
 
-import org.dualnback.android.FeedbackRuler;
-import org.dualnback.android.Grid;
-import org.dualnback.android.Pair;
-import org.dualnback.android.Stimulus;
+import android.content.Intent;
 
 import android.widget.Button;
 
@@ -97,9 +94,12 @@ class StimulusFlipper extends Thread
 
 				sleep(2500);
 			}
-		} catch(InterruptedException e) {}
+		} catch(InterruptedException e) {
+			sound_player_.stop();
+		}
 	}
 
+	@Override
 	public void run() {
 		Log.v(TAG, "Starting stimulus thread...");
 
@@ -159,9 +159,9 @@ class Level extends Object
 	private ArrayList<Stimulus> stimuli_;
 	private int n_;
 
-	private DualNBack game_;
+	private NBackTask game_;
 
-	Level(DualNBack game, int n)
+	Level(NBackTask game, int n)
 	{
 		n_ = n;
 		game_ = game;
@@ -371,91 +371,16 @@ class Level extends Object
 	}
 }
 
-
-public class DualNBack extends Activity
-{
+public class DualNBack extends Activity {
 	private static final String TAG = "DualNBack";
-
-	private Thread stimulus_thread_;
-
-	private Iterator<Stimulus> current_stimuli_;
-	private Level current_level_;
-	private ScoreKeeper score_keeper_;
-	private FeedbackRuler ruler_;
-
-	private MediaPlayer sound_player_;
 
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
-		Log.v(TAG, "Starting up...");
-        super.onCreate(savedInstanceState);
-
-		Stimulus.loadResources(getResources());
-
-		LinearLayout topLayout = new LinearLayout(this);
-		topLayout.setOrientation(LinearLayout.VERTICAL);
-		topLayout.setGravity(Gravity.FILL);
-		topLayout.setWeightSum(1.0f);
-
-		Grid grid = new Grid(this);
-		topLayout.addView(grid, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.08f));
-
-		ruler_ = new FeedbackRuler(this);
-		ruler_.setBackgroundColor(0xFFFFFFFF);
-		topLayout.addView(ruler_, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, 1));
-
-		LinearLayout buttonLayout = new LinearLayout(this);
-		buttonLayout.setOrientation(LinearLayout.HORIZONTAL);
-
-		Button audio_button = new Button(this);
-		audio_button.setText("Aural");
-		Button visual_button = new Button(this);
-		visual_button.setText("Visual");
-
-		audio_button.setOnClickListener(new View.OnClickListener() {
-			public void onClick(View v) {
-				ruler_.activate(score_keeper_.allegedAuralMatch());
-				ruler_.invalidate();
-			}
-		});
-
-		visual_button.setOnClickListener(new View.OnClickListener() {
-			public void onClick(View v) {
-				ruler_.activate(score_keeper_.allegedVisualMatch());
-				ruler_.invalidate();
-			}
-		});
-
-		buttonLayout.addView(audio_button, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
-		buttonLayout.addView(visual_button, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.5f));
-
-		topLayout.addView(buttonLayout, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.9f));
-		setContentView(topLayout);
-
-		sound_player_ = new MediaPlayer();
-		play(grid, sound_player_);
-    }
-
-	@Override
-	protected void onPause()
-	{
-		super.onPause();
-		stimulus_thread_.interrupt();
-		sound_player_.stop();
-		setResult(RESULT_OK);
-		finish();
+		super.onCreate(savedInstanceState);
+		
+		Intent start_game = new Intent(DualNBack.this, NBackTask.class);
+		startActivity(start_game);
 	}
+};
 
-	public void play(Grid grid, MediaPlayer sound_player)
-	{
-		current_level_= new Level(this, 2);
-		current_stimuli_ = current_level_.start();
-
-		StimulusFlipper flipper = new StimulusFlipper(grid, sound_player, ruler_, current_stimuli_);
-		score_keeper_ = new ScoreKeeper(current_level_, flipper);
-		stimulus_thread_ = new Thread(flipper);
-
-		stimulus_thread_.start();
-	}
-}
