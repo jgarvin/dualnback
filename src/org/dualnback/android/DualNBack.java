@@ -35,7 +35,7 @@ class StimulusFlipper extends Thread
 
 	private MediaPlayer sound_player_;
 
-	StimulusFlipper(Grid to_light, FeedbackRuler deactivate_on_flip, Iterator<Stimulus> start_iterator) {
+	StimulusFlipper(Grid to_light, MediaPlayer sound_player, FeedbackRuler deactivate_on_flip, Iterator<Stimulus> start_iterator) {
 		super();
 
 		grid_ = to_light;
@@ -43,7 +43,7 @@ class StimulusFlipper extends Thread
 		ruler_ = deactivate_on_flip;
 		current_stimulus_index_ = -1;
 
-		sound_player_ = new MediaPlayer();
+		sound_player_ = sound_player;
 		sound_player_.setOnInfoListener(new MediaPlayer.OnInfoListener() {
 			private static final String TAG = "dualnback media";
 			public boolean onInfo(MediaPlayer mp, int what, int extra) {
@@ -70,39 +70,34 @@ class StimulusFlipper extends Thread
 		});
 	}
 
-	private void realWait(long ms) {
-		Log.v(TAG, String.format("%dms wait", ms));
-		try {
-			sleep(ms);
-		} catch(InterruptedException e) {}
-	}
-
 	private void startFlipping() {
-		while(stimuli_iter_.hasNext()) {
-			Log.v(TAG, "Begin stimulus display loop iteration");
+		try {
+			while(stimuli_iter_.hasNext()) {
+				Log.v(TAG, "Begin stimulus display loop iteration");
 
-			ruler_.deactivate();
-			ruler_.postInvalidate();
+				ruler_.deactivate();
+				ruler_.postInvalidate();
 
-			Stimulus current;
-			synchronized(stimuli_iter_) {
-				current = stimuli_iter_.next();
-				current_stimulus_index_ += 1;
-			}
+				Stimulus current;
+				synchronized(stimuli_iter_) {
+					current = stimuli_iter_.next();
+					current_stimulus_index_ += 1;
+				}
 
-			sound_player_.reset();
-			current.playSound(sound_player_);
+				sound_player_.reset();
+				current.playSound(sound_player_);
 			
-			current.displayVisual(grid_);
-			grid_.postInvalidate();
+				current.displayVisual(grid_);
+				grid_.postInvalidate();
 
-			realWait(500);
+				sleep(500);
 
-			grid_.clear();
-			grid_.postInvalidate();
+				grid_.clear();
+				grid_.postInvalidate();
 
-			realWait(2500);
-		}
+				sleep(2500);
+			}
+		} catch(InterruptedException e) {}
 	}
 
 	public void run() {
@@ -388,17 +383,15 @@ public class DualNBack extends Activity
 	private ScoreKeeper score_keeper_;
 	private FeedbackRuler ruler_;
 
-    /** Called when the activity is first created. */
+	private MediaPlayer sound_player_;
+
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
 		Log.v(TAG, "Starting up...");
+        super.onCreate(savedInstanceState);
 
 		Stimulus.loadResources(getResources());
-
-        super.onCreate(savedInstanceState);
-		TextView tv = new TextView(this);
-		tv.setText("test1");
 
 		LinearLayout topLayout = new LinearLayout(this);
 		topLayout.setOrientation(LinearLayout.VERTICAL);
@@ -440,23 +433,26 @@ public class DualNBack extends Activity
 		topLayout.addView(buttonLayout, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.9f));
 		setContentView(topLayout);
 
-		play(grid);
+		sound_player_ = new MediaPlayer();
+		play(grid, sound_player_);
     }
 
 	@Override
 	protected void onPause()
 	{
 		super.onPause();
+		stimulus_thread_.interrupt();
+		sound_player_.stop();
 		setResult(RESULT_OK);
 		finish();
 	}
 
-	public void play(Grid grid)
+	public void play(Grid grid, MediaPlayer sound_player)
 	{
 		current_level_= new Level(this, 2);
 		current_stimuli_ = current_level_.start();
 
-		StimulusFlipper flipper = new StimulusFlipper(grid, ruler_, current_stimuli_);
+		StimulusFlipper flipper = new StimulusFlipper(grid, sound_player, ruler_, current_stimuli_);
 		score_keeper_ = new ScoreKeeper(current_level_, flipper);
 		stimulus_thread_ = new Thread(flipper);
 
