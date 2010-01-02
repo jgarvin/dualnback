@@ -33,8 +33,6 @@ public class NBackTask extends Activity
 		Log.v(TAG, "Starting up...");
         super.onCreate(savedInstanceState);
 
-		Stimulus.loadResources(getResources());
-
 		LinearLayout topLayout = new LinearLayout(this);
 		topLayout.setOrientation(LinearLayout.VERTICAL);
 		topLayout.setGravity(Gravity.FILL);

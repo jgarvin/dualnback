@@ -39,6 +39,7 @@ public class Grid extends View {
 		lit_square_y_ = -1;
 	}
 
+	@Override
     protected void onDraw(Canvas canvas) {
 		super.onDraw(canvas);
 

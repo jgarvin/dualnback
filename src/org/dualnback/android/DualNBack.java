@@ -11,14 +11,14 @@ import android.view.Gravity;
 import android.view.ViewGroup.LayoutParams;
 
 import android.content.Intent;
-
 import android.widget.Button;
-
-import java.util.*;
-
 import android.app.AlertDialog;
-
 import android.media.MediaPlayer;
+
+import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.Random;
+import java.util.Collections;
 
 class StimulusFlipper extends Thread
 {
@@ -378,9 +378,33 @@ public class DualNBack extends Activity {
     public void onCreate(Bundle savedInstanceState)
     {
 		super.onCreate(savedInstanceState);
+		Stimulus.loadResources(getResources());
+
+		LinearLayout topLayout = new LinearLayout(this);
+		topLayout.setOrientation(LinearLayout.VERTICAL);
+		topLayout.setGravity(Gravity.FILL);
+		topLayout.setWeightSum(1.0f);
+
+		LinearLayout playLayout = new LinearLayout(this);
+		playLayout.setOrientation(LinearLayout.HORIZONTAL);
+
+		Button play_button = new Button(this);
+		play_button.setText("Play");
+
+		play_button.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) {
+				Intent start_game = new Intent(DualNBack.this, NBackTask.class);
+				startActivity(start_game);
+			}
+		});
+
+		playLayout.addView(play_button);
+
+		IntegerSpinner spinner = new IntegerSpinner(this);
+		playLayout.addView(spinner);
 		
-		Intent start_game = new Intent(DualNBack.this, NBackTask.class);
-		startActivity(start_game);
+		topLayout.addView(playLayout, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
+		setContentView(topLayout);
 	}
 };
 
