@@ -10,7 +10,11 @@ import android.content.Context;
 import android.view.ViewGroup.LayoutParams;
 import android.graphics.Canvas;
 
+import android.util.Log;
+
 public class IntegerSpinner extends View {
+	private static final String TAG = "IntegerSpinner";
+	
 	private int val_;
 
 	private LinearLayout topLayout_;
@@ -29,6 +33,7 @@ public class IntegerSpinner extends View {
 		minus_button.setText("-");
 
 		final TextView field = new TextView(context);
+		field.setText("2");
 
 		plus_button.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
@@ -51,11 +56,33 @@ public class IntegerSpinner extends View {
 		topLayout_.addView(minus_button, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 0.1f));
     }
 
-	// @Override
-	// protected void onDraw(Canvas canvas) {
-	// 	super.onDraw(canvas);
-	// 	topLayout_.onDraw(canvas);
-	// }
+	@Override
+	protected void onDraw(Canvas canvas) {
+		Log.v(TAG, "Ran ondraw");
+		super.onDraw(canvas);
+		topLayout_.draw(canvas);
+		topLayout_.invalidate();
+	}
+
+	@Override
+	protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+		Log.v(TAG, "Ran layout");
+		super.onLayout(changed, left, top, right, bottom);
+
+		if(changed) {
+			topLayout_.layout(left, top, right, bottom);
+			topLayout_.invalidate();
+		}
+	}
+
+	@Override
+	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+		Log.v(TAG, "Ran size change");
+		super.onSizeChanged(w, h, oldw, oldh);
+
+//		topLayout_.size(w, h, oldw, oldh);
+//		topLayout_.invalidate();
+	}
 
 	public int value() {
 		return val_;
