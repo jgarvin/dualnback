@@ -57,9 +57,9 @@ class StimulusFlipper extends Thread
 					case MediaPlayer.MEDIA_INFO_NOT_SEEKABLE:
 						Log.v(TAG, "MEDIA_INFO_NOT_SEEKABLE");
 						break;
-					case MediaPlayer.MEDIA_INFO_METADATA_UPDATE:
-						Log.v(TAG, "MEDIA_INFO_METADATA_UPDATE");
-						break;
+					// case MediaPlayer.MEDIA_INFO_METADATA_UPDATE:
+					// 	Log.v(TAG, "MEDIA_INFO_METADATA_UPDATE");
+					// 	break;
 				}
 
 				return false;
