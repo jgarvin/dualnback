@@ -400,8 +400,9 @@ public class DualNBack extends Activity {
 
 		playLayout.addView(play_button);
 
-		IntegerSpinner spinner = new IntegerSpinner(this);
-		playLayout.addView(spinner);
+//		IntegerSpinner spinner = new IntegerSpinner(this);
+		// NumberPicker picker = new NumberPicker(this);
+		// playLayout.addView(picker);
 		
 		topLayout.addView(playLayout, new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
 		setContentView(topLayout);
